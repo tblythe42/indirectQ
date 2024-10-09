@@ -7,6 +7,7 @@ import numpy as np
 import rasterio as rio
 from shapely.geometry import Point, LineString
 
+
 def points_along_lines(line_pth, dist=1.0, include_endpoint = True, ID_field=None, keep_attrs=None):
     """
     Creates points at equal spaced distances along lines.
@@ -34,6 +35,9 @@ def points_along_lines(line_pth, dist=1.0, include_endpoint = True, ID_field=Non
                 raise ValueError("An attribute was listed to keep that does not exist in the available attributes.")
 
         if keep_attrs is None:
+            attrs_to_keep = None
+
+        else:
             attrs_to_keep = None
 
         #pnts = gpd.GeoDataFrame({'Dwnstrm_Distance': 0.0, 'geometry': Point([ln.geometry.coords[0]])},
@@ -65,26 +69,26 @@ def points_along_lines(line_pth, dist=1.0, include_endpoint = True, ID_field=Non
 
         pnts = gpd.GeoDataFrame({'Dwnstrm_Distance': distances,
                                  'geometry': pnt_coords},
-                                crs='EPSG:32100')
+                                crs=lns.crs)
 
-        if attrs_to_keep is None & ID_field is None:
+        if (attrs_to_keep is None) & (ID_field is None):
             geodfs[str(i)] = dict()
             geodfs[str(i)]['lineID'] = i
             geodfs[str(i)]['Line'] = ln.geometry
             geodfs[str(i)]['Points'] = pnts
-        elif attrs_to_keep is None & ID_field is not None:
+        elif (attrs_to_keep is None) & (ID_field is not None):
             geodfs[str(ln[ID_field])] = dict()
             geodfs[str(ln[ID_field])][ID_field] = ln[ID_field]
             geodfs[str(ln[ID_field])]['Line'] = ln.geometry
             geodfs[str(ln[ID_field])]['Points'] = pnts
-        elif attrs_to_keep is not None & ID_field is None:
+        elif (attrs_to_keep is not None) & (ID_field is None):
             geodfs[str(i)] = dict()
             geodfs[str(i)]['lineID'] = i
             for a in attrs_to_keep:
                 geodfs[str(i)][a] = ln[a]
             geodfs[str(i)]['Line'] = ln.geometry
             geodfs[str(i)]['Points'] = pnts
-        elif attrs_to_keep is not None & ID_field is not None:
+        elif (attrs_to_keep is not None) & (ID_field is not None):
             geodfs[str(ln[ID_field])] = dict()
             for a in attrs_to_keep:
                 geodfs[str(ln[ID_field])][a] = ln[a]
@@ -94,6 +98,7 @@ def points_along_lines(line_pth, dist=1.0, include_endpoint = True, ID_field=Non
     return geodfs
 
 
+# Does not check for consistency in coordinate systems, make sure .tif is the same crs as input points.
 def sample_raster_at_points(geodf_pnts, raster_pth):
     """
     Takes a geodataframe with point geometries, file path to a raster, and returns the same geodataframe
@@ -106,7 +111,7 @@ def sample_raster_at_points(geodf_pnts, raster_pth):
     coord_list = [(x, y) for x, y in zip(gdf["geometry"].x, gdf["geometry"].y)]
 
     with rio.open(raster_pth) as src:
-        gdf["value"] = [x[0] for x in src.sample(coord_list)]
+        gdf["value"] = [x[0] / 0.3048 for x in src.sample(coord_list)]
 
     return gdf
 
@@ -122,7 +127,7 @@ def sort_cross_sections(profile_dict, xsec_dict, invert_line=False):
     :return: an updated cross-section dictionary with 'Rank' - lowest rank is most upstream, and centerline
     distance.
     """
-    chn_cnt_geom = profile_dict['Line']
+    chn_cnt_geom = profile_dict['0']['Line']
     if invert_line:
         chn_line = chn_cnt_geom.reverse()
     else:
@@ -135,7 +140,7 @@ def sort_cross_sections(profile_dict, xsec_dict, invert_line=False):
         intrsct_pnt = chn_line.intersection(xsec_lin)
         xsec_prof_dist = chn_line.project(intrsct_pnt)
         dkeys.append(key)
-        xsec_dist.append(xsec_prof_dist[0])
+        xsec_dist.append(xsec_prof_dist)
 
     Fdframe = pd.DataFrame({'keys': dkeys, 'xsec_cntrln_dist': xsec_dist})
     Fdframe.sort_values(by='xsec_cntrln_dist')
@@ -161,7 +166,7 @@ def sort_points(profile_dict, gdframe_pnts, invert_line=False):
     most upstream; 'Distance_to_Dwnstrm' - distance along the channel to the next downstream cross-section;
     'Distance_to_Upstrm' - distance along the channel to the next upstream cross-section.
     """
-    chn_cnt_geom = profile_dict['Line']
+    chn_cnt_geom = profile_dict['0']['Line']
     if invert_line:
         chn_line = chn_cnt_geom.reverse()
     else:
@@ -192,38 +197,108 @@ def sort_points(profile_dict, gdframe_pnts, invert_line=False):
     pnts['Waters_Edge'] = ws_side
     return pnts
 
-        o_vcnt = _orth_vector(vcnt)
-        u_vcnt = _unit_vector(vcnt)
-        # Create Vector to WS Point
-        vws = _calc_vector((cp.x[0], cp.y[0]), (pnts['X'][i], pnts['Y'][i]))
-        u_vws = _unit_vector(vws)
-        # get vector angle
-        a = _angle_between_vectors(u_vcnt, u_vws)
-        # check sign of dot product
-        dot_sgn = np.dot(vws, o_vcnt)
-        if dot_sgn > 0:
-            bnk = 'L'
-        elif dot_sgn < 0:
-            bnk = 'R'
-        else:
-            bnk = 'UNKNOWN'
-        ws_side.append(bnk)
+    #     o_vcnt = _orth_vector(vcnt)
+    #     u_vcnt = _unit_vector(vcnt)
+    #     # Create Vector to WS Point
+    #     vws = _calc_vector((cp.x[0], cp.y[0]), (pnts['X'][i], pnts['Y'][i]))
+    #     u_vws = _unit_vector(vws)
+    #     # get vector angle
+    #     a = _angle_between_vectors(u_vcnt, u_vws)
+    #     # check sign of dot product
+    #     dot_sgn = np.dot(vws, o_vcnt)
+    #     if dot_sgn > 0:
+    #         bnk = 'L'
+    #     elif dot_sgn < 0:
+    #         bnk = 'R'
+    #     else:
+    #         bnk = 'UNKNOWN'
+    #     ws_side.append(bnk)
+    #
+    # origin_pnt = chn_cnt_geom.interpolate(pnts['Cntrline_Dist'][i] - 1)
+    # cpdwn = chn_cnt_geom.interpolate(pnts['Cntrline_Dist'][i] + 1)
+    # vcnt = _calc_vector((cp.x[0], cp.y[0]), (cpdwn.x[0], cpdwn.y[0]))
 
-    origin_pnt = chn_cnt_geom.interpolate(pnts['Cntrline_Dist'][i] - 1)
-    cpdwn = chn_cnt_geom.interpolate(pnts['Cntrline_Dist'][i] + 1)
-    vcnt = _calc_vector((cp.x[0], cp.y[0]), (cpdwn.x[0], cpdwn.y[0]))
+
+def interpz_at_intersection(prof_pnts, xsec_dict, interp_method='linear'):
+    """
+    Find intersection of two shapely lines and then interp the distance to the intersection point based on the
+    profile line
+    :param prof_line:
+    :param intrsct_line:
+    :return:
+    """
+    xsec_dict = xsec_dict
+    rght_srt = prof_pnts[prof_pnts['Waters_Edge'] == 'R'].sort_values(by='Cntrline_Dist')
+    rght_ln = LineString(rght_srt.geometry.to_list())
+    left_srt = prof_pnts[prof_pnts['Waters_Edge'] == 'L'].sort_values(by='Cntrline_Dist')
+    left_ln = LineString(left_srt.geometry.to_list())
+
+    for key, item in xsec_dict.items():
+        if rght_ln.intersects(item['Line']):
+            r_pnt = rght_ln.intersection(item['Line'])
+            rwse_dist = rght_ln.project(r_pnt)
+            rxsec_dist = item['Line'].project(r_pnt)
+            rpro_d = np.array(cumdistance_from_pnts(rght_srt['X'].to_list(), rght_srt['Y'].to_list()))
+            rpro_z = rght_srt['Z'].values
+            rWSE = np.interp(rwse_dist, rpro_d, rpro_z)
+        else:
+            rWSE = np.nan
+
+        if left_ln.intersects(item['Line']):
+            l_pnt = left_ln.intersection(item['Line'])
+            lwse_dist = left_ln.project(l_pnt)
+            lxsec_dist = item['Line'].project(l_pnt)
+            lpro_d = np.array(cumdistance_from_pnts(left_srt['X'].to_list(), left_srt['Y'].to_list()))
+            lpro_z = left_srt['Z'].values
+            lWSE = np.interp(lwse_dist, lpro_d, lpro_z)
+        else:
+            lWSE = np.nan
+
+        mn_WSE = np.array([rWSE, lWSE])
+        if np.isnan(mn_WSE).all():
+            print("Cross Section does not intersect available water surface profile data.")
+            break
+        elif np.isnan(mn_WSE).any():
+            mn_WSE = mn_WSE[~np.isnan(mn_WSE)][0]
+        else:
+            mn_WSE = mn_WSE.mean()
+
+        xsecpntdist = item['Points']['Dwnstrm_Distance'].to_list()
+        xsecpntz = item['Points']['value'].to_list()
+        xswse_ln = LineString([Point(xsecpntdist[0], mn_WSE), Point(xsecpntdist[-1], mn_WSE)])
+        xspnt_ln = LineString([Point(x, y) for x, y in zip(xsecpntdist, xsecpntz)])
+        wse_intsct_pnts = xspnt_ln.intersection(xswse_ln)
+        wse_int_coords =[[p.x, p.y] for p in wse_intsct_pnts]
+        item['WSE_Intersects'] = wse_int_coords
+        xsec_dict[key] = item
+
+    return xsec_dict
 
 
 #def sample_polygons_at_points(geodf_pnts, raster_pth)
 
 
-def _define_origin(point)
+#def _define_origin(point)
 
 
-def _orth_vector(vector):
-    """ Returns the vector that is orthogonal (perpendicular) to the input vector. """
-    orth_vect = np.array([vector[1], -vector[0]])
-    return orth_vect
+# def _orth_vector(vector):
+#     """ Returns the vector that is orthogonal (perpendicular) to the input vector. """
+#     orth_vect = np.array([vector[1], -vector[0]])
+#     return orth_vect
+
+def cumdistance_from_pnts(xcoords, ycoords):
+    dists = []
+    for i, pnt in enumerate(zip(xcoords, ycoords)):
+        if i == 0:
+            d = 0.0
+            dists.append(d)
+        else:
+            x1, y1 = list(zip(xcoords, ycoords))[i - 1]
+            x2, y2 = pnt
+            d = np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+            dists.append(d + dists[-1])
+
+    return dists
 
 
 def _calc_vector(p1, p2):
@@ -235,16 +310,16 @@ def _calc_vector(p1, p2):
     return vect
 
 
-def _unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
-
-
-def _angle_between_vectors(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'"""
-    v1_u = _unit_vector(v1)
-    v2_u = _unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+# def _unit_vector(vector):
+#     """ Returns the unit vector of the vector.  """
+#     return vector / np.linalg.norm(vector)
+#
+#
+# def _angle_between_vectors(v1, v2):
+#     """ Returns the angle in radians between vectors 'v1' and 'v2'"""
+#     v1_u = _unit_vector(v1)
+#     v2_u = _unit_vector(v2)
+#     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
 def _calc_signed_angles_from_origin(origin_pnt, ref_vector, xcoords, ycoords):
