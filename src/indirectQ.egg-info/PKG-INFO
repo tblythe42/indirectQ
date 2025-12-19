@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: indirectQ
+Version: 0.0.1
+Summary: Package for implementing USGS Technical Methods for indirectly calculating discharge.
+Author-email: "T.L. Blythe" <todd.blythe@mt.gov>
+Maintainer-email: "MT Dept. of Natural Resources and Conservation" <todd.blythe@mt.gov>
+License-Expression: Apache-2.0
+Keywords: hydrology,climate,data,meteorology
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Hydrographers, Geomorphologists, Hydrologists
+Classifier: Topic :: Hydraulics :: Indirect Discharge
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: rasterio
+Requires-Dist: geopandas

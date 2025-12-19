@@ -2,14 +2,14 @@
 #   based on distribution of Manning's n values
 
 from pathlib import Path
-import rasterio as rio
 import geopandas as gpd
 import pandas as pd
 
+
+import indirectQ
+
 from runconfig.inputpaths import inputpaths
-from indirectQ import channelbuilder
-from indirectQ import utilities
-from indirectQ import slopearea
+from src.indirectQ import channelbuilder, slopearea, utilities
 from scipy.stats import norm
 
 topo_pth = Path(inputpaths['topography']['dir']) / Path(inputpaths['topography']['file'])

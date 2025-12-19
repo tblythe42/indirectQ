@@ -1,1 +1,0 @@
-print("indirectQ package loaded")

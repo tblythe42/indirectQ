@@ -1,0 +1,11 @@
+pyproject.toml
+src/indirectQ/__init__.py
+src/indirectQ/channelbuilder.py
+src/indirectQ/config.py
+src/indirectQ/slopearea.py
+src/indirectQ/utilities.py
+src/indirectQ.egg-info/PKG-INFO
+src/indirectQ.egg-info/SOURCES.txt
+src/indirectQ.egg-info/dependency_links.txt
+src/indirectQ.egg-info/requires.txt
+src/indirectQ.egg-info/top_level.txt
